@@ -1,5 +1,6 @@
 
 // see https://github.com/kaplanke/tamed-chat-server for Tamed Chat Server
+// Enter local IP to chrome://flags -> Insecure origins treated as secure for non-ssl execution
 
 var socketURL = "ws://192.168.1.104:5001/";
 
