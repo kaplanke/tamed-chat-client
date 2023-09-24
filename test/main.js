@@ -1,4 +1,6 @@
 
+// see https://github.com/kaplanke/tamed-chat-server for Tamed Chat Server
+
 var socketURL = "ws://192.168.1.104:5001/";
 
 var logBox = document.getElementById("logBox");
