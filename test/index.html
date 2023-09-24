@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tamed Chat Test</title>
+</head>
+
+<body>
+
+    <div id="logBox" style="height: 200px; width:90%; padding:20px; position: fixed; bottom: 0;
+                word-wrap: break-word; word-break: break-word"></div>
+    <div id="avBox" style="height: 100px; width:90%; padding:20px; position: fixed; bottom: 210px;
+                    word-wrap: break-word; word-break: break-word">
+        <video autoplay id="remote-video" style="height:100px;"></video>
+        <video autoplay muted id="local-video" style="height:100px;"></video>
+    </div>
+    <table>
+        <tr>
+            <TD style="border:solid 1px;padding:10px;">
+                My User ID: <input type="text" id="user1id" />
+                <button id="btnLoginUser">Login </button><br />
+                To: <input type="text" id="user1pm_to" />
+                <button id="btnGetPastMessages"> Get Past Messages</button><br />
+                To: <input type="text" id="user1sm_to" />
+                Msg: <input type="text" id="user1sm_msg" />
+                <button id="btnSendMessage"> Send Message </button><br>
+                To: <input type="text" id="user1av_to" />
+                <button id="btnMakeAVCall"> Make AV Call </button><br>
+            </TD>
+        </tr>
+    </table>
+</body>
+<script src="./bundle.js"></script>
+</html>
