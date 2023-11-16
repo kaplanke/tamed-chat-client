@@ -23,8 +23,8 @@ document.getElementById("btnSendMessage").onclick = function () {
 };
 document.getElementById("btnMakeAVCall").onclick = function () {
     if (tcc.isInCall())
-        tcc.hangup();
-    setTimeout(() => { tcc.makeAVCall(document.getElementById('user1av_to').value) }, 3000);
+        tcc.hangUp();
+    tcc.makeAVCall(document.getElementById('user1av_to').value);
 };
 
 const TamedChatClientExports = require("tamed-chat-client");

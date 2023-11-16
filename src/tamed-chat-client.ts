@@ -2,7 +2,6 @@ import io from "socket.io-client";
 
 class TamedChatClient {
 
-
     chatClient: ReturnType<typeof io>;
     avData: object = {};
     peerConnection: any;
@@ -48,8 +47,13 @@ class TamedChatClient {
                 this.avData["from"] = payload.from;
                 incomingAVCallCallback(payload.from);
             } else if (payload?.msg?.action == "AVAnswerMade") {
-                this.avData["answerData"] = payload;
-                this._establishCall();
+                if (payload.msg.answer) {
+                    this.avData["answerData"] = payload;
+                    this._establishCall();
+                } else if (payload.msg.ic) {
+                    this.peerConnection.addIceCandidate(payload.msg.ic)
+                        .catch(err => this.avData["icArr"].push(payload.msg.ic));
+                }
             } else if (payload?.msg?.action == "AVCallClosed") {
                 this._reset();
                 hangupCallback();
@@ -67,25 +71,28 @@ class TamedChatClient {
         this.remoteStreamBinder = remoteStreamBinder;
         this.cleanUp = cleanUp;
 
-        this.peerConnection = rtcProvider();
+        this._reset();
+    }
+
+    _errCatch = (err) => {
+        this.errorCallback(err);
     }
 
     _establishCall = () => {
         if (this.chatClient.connected) {
-            this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["answerData"].msg.answer)).then(_ => {
-                this.AVCallEstablishedCallback(this.avData["to"]);
-            }).catch(err => {
-                this.errorCallback(err);
-            });
+            this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["answerData"].msg.answer))
+                .then(_ => Promise.all(this.avData["icArr"].map((x) => this.peerConnection.addIceCandidate(x))))
+                .then(_ => this.AVCallEstablishedCallback(this.avData["to"]))
+                .catch(this._errCatch);
         } else {
             this.errorCallback("Channel Closed!");
         }
     }
 
     _reset = () => {
-        this.avData = {};
-        this.cleanUp();
         if (this.peerConnection) {
+            this.avData = {};
+            this.cleanUp();
             try {
                 this.peerConnection.close();
             } catch (err) {
@@ -93,36 +100,42 @@ class TamedChatClient {
             }
         }
         this.peerConnection = this.rtcProvider();
+        this.avData = {};
+        this.avData["icArr"] = [];
+        this.peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                this.chatClient.send({
+                    action: "makeAVAnswer",
+                    data: {
+                        ic: event.candidate,
+                        to: this.avData["to"] || this.avData["from"]
+                    }
+                });
+            }
+        }
     }
 
     isInCall = () => {
         return (this.avData["to"] || this.avData["from"]) ? true : false;
     }
-    
+
     makeAVCall = (to) => {
         this.avData["to"] = to;
         if (this.chatClient.connected) {
             this.remoteStreamBinder(this.peerConnection);
-            this.localStreamBinder(this.peerConnection).then(() => {
-                this.peerConnection.createOffer().then(offer => {
-                    this.peerConnection.setLocalDescription(this.rtcProvider("RTCSessionDescription", offer)).then(_ => {
-                        console.log("sending AV Call req")
-                        this.chatClient.send({
-                            action: "makeAVCall",
-                            data: {
-                                offer,
-                                to: to
-                            }
-                        });
-                    }).catch(err => {
-                        this.errorCallback(err);
+            this.localStreamBinder(this.peerConnection)
+                .then(_ => this.peerConnection.createOffer())
+                .then(offer => this.peerConnection.setLocalDescription(this.rtcProvider("RTCSessionDescription", offer)))
+                .then(_ => {
+                    this.chatClient.send({
+                        action: "makeAVCall",
+                        data: {
+                            offer: this.peerConnection.localDescription,
+                            to: to
+                        }
                     });
-                }).catch(err => {
-                    this.errorCallback(err);
-                });
-            }).catch(err => {
-                this.errorCallback(err);
-            });
+                })
+                .catch(this._errCatch);
         } else {
             this.errorCallback("Channel Closed!");
         }
@@ -130,49 +143,25 @@ class TamedChatClient {
 
     acceptCall = () => {
         if (this.chatClient.connected) {
-            this.peerConnection = this.rtcProvider();
             this.remoteStreamBinder(this.peerConnection);
-            this.localStreamBinder(this.peerConnection).then(() => {
-                this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["callData"].msg.offer)).then(_ => {
-                    this.peerConnection.createAnswer().then(answer2 => {
-                        this.peerConnection.setLocalDescription(this.rtcProvider("RTCSessionDescription", answer2)).then(_ => {
-                            this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["callData"].msg.offer)).then(_ => {
-                                this.peerConnection.createAnswer().then(answer => {
-                                    this.peerConnection.setLocalDescription(this.rtcProvider("RTCSessionDescription", answer)).then(_ => {
-                                        this.chatClient.send({
-                                            action: "makeAVAnswer",
-                                            data: {
-                                                answer,
-                                                to: this.avData["callData"].from
-                                            }
-                                        });
-                                        this.avData["from"] = this.avData["callData"].from;
-                                    }).catch(err => {
-                                        this.errorCallback(err);
-                                    });
-                                }).catch(err => {
-                                    this.errorCallback(err);
-                                });
-                            }).catch(err => {
-                                this.errorCallback(err);
-                            });
-                        }).catch(err => {
-                            this.errorCallback(err);
-                        });
-                    }).catch(err => {
-                        this.errorCallback(err);
+            this.localStreamBinder(this.peerConnection).then(() => this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["callData"].msg.offer)))
+                .then(_ => Promise.all(this.avData["icArr"].map(x => this.peerConnection.addIceCandidate(x))))
+                .then(() => this.peerConnection.createAnswer())
+                .then(answer => this.peerConnection.setLocalDescription(this.rtcProvider("RTCSessionDescription", answer)))
+                .then(_ => {
+                    this.chatClient.send({
+                        action: "makeAVAnswer",
+                        data: {
+                            answer: this.peerConnection.localDescription,
+                            to: this.avData["callData"].from
+                        }
                     });
-                }).catch(err => {
-                    this.errorCallback(err);
-                });
-            }).catch(err => {
-                this.errorCallback(err);
-            });
+                    this.avData["from"] = this.avData["callData"].from;
+                }).catch(this._errCatch);
         } else {
             this.errorCallback("Channel Closed!");
         }
     }
-
 
     loginUser = (data) => {
         this.chatClient.send({ action: "authorize", data });
@@ -206,9 +195,6 @@ class TamedChatClient {
         }
         this._reset();
     }
-
-
-
 
 }
 

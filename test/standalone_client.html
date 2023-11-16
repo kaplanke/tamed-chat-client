@@ -1,0 +1,114 @@
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"
+  integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+<script>
+
+  var urlParams = new URLSearchParams(window.location.search);
+  var toId = urlParams.get("id") == 1 ? 1 : 2;
+
+  const iceConfiguration = {
+    iceServers: [
+      {
+        urls: "stun:stun.relay.metered.ca:80",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:80",
+        username: "xxx",
+        credential: "yyy",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:80?transport=tcp",
+        username: "xxx",
+        credential: "yyy",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:443",
+        username: "xxx",
+        credential: "yyy",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:443?transport=tcp",
+        username: "xxx",
+        credential: "yyy",
+      }
+
+    ]
+  }
+
+  var pc1 = new RTCPeerConnection(iceConfiguration);
+  pc1.icArr = [];
+
+  pc1.onicecandidate = e => !e.candidate || console.log(e.candidate) || chatClient.send({
+    action: "makeAVAnswer",
+    data: {
+      ic: e.candidate,
+      to: toId
+    }
+  });
+
+  pc1.onaddstream = e => v2.srcObject = e.stream;
+
+  var chatClient = io("wss://your.socket.io.server/");
+
+  chatClient.send({ action: "authorize", data: { userId: (toId == 1 ? 2 : 1) } })
+
+
+  chatClient.on("message", (payload) => {
+    if (payload?.msg?.action == "AVCallMade") {
+      console.log(payload)
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => pc1.addStream(v1.srcObject = stream))
+        .then(() => pc1.setRemoteDescription(payload.msg.offer))
+        .then(() => Promise.all(pc1.icArr.map(x => pc1.addIceCandidate(x))))
+        .then(() => pc1.createAnswer())
+        .then(answer => pc1.setLocalDescription(answer))
+        .then(() => {
+          chatClient.send({
+            action: "makeAVAnswer",
+            data: {
+              answer: pc1.localDescription,
+              to: toId
+            }
+          });
+        })
+        .catch(failed);
+    } else if (payload?.msg?.action == "AVAnswerMade") {
+      console.log(payload)
+      if (payload.msg.answer) {
+        pc1.setRemoteDescription(payload.msg.answer)
+          .then(() => Promise.all(pc1.icArr.map(x => pc1.addIceCandidate(x))))
+          .catch(failed);
+      } else if (payload.msg.ic) {
+        pc1.addIceCandidate(payload.msg.ic).catch(err => pc1.icArr.push(payload.msg.ic));
+      }
+    }
+  });
+
+
+  function start() {
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => pc1.addStream(v1.srcObject = stream))
+      .then(() => pc1.createOffer())
+      .then(offer => pc1.setLocalDescription(offer))
+      .then(() => {
+        chatClient.send({
+          action: "makeAVCall",
+          data: {
+            offer: pc1.localDescription,
+            to: toId
+          }
+        });
+      })
+      .then(() => console.log("Started"))
+      .catch(failed);
+  }
+
+  var log = msg => div.innerHTML += "<p>" + msg + "</p>";
+  var failed = e => log(e + ", line " + e.lineNumber);
+
+</script>
+
+<html>
+<video muted id="v1" height="120" width="160" autoplay></video>
+<video id="v2" height="120" width="160" autoplay></video><br>
+<button onclick="start()">Start!</button>
+<div id="div"></div>
