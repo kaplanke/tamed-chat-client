@@ -3,7 +3,7 @@
 // Enter local IP to [chrome://flags -> "Insecure origins treated as secure"] for non-ssl execution
 // e.g. http://192.168.X.Y:9000
 
-var socketURL = "ws://192.168.1.104:5001/";
+var socketURL = "ws://localhost:3034/";
 
 var logBox = document.getElementById("logBox");
 function logMsg(msg) {
@@ -13,7 +13,7 @@ function logError(err) {
     logBox.innerHTML = "<b style='color:red'>Error:</b> <verbatim>" + err.message + "</verbatim></br>" + logBox.innerHTML;
 }
 document.getElementById("btnLoginUser").onclick = function () {
-    tcc.loginUser({ userId: document.getElementById('user1id').value });
+    tcc.loginUser({ token:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiYWRtaW5AZXNlbWUub25lIiwiaWF0IjoxNzAwNDA5OTY3LCJleHAiOjE3MDMwODgzNjd9.rwBIn7EpJAowzq6RSZLRDTdKrTIYD04IiSbzNnanRZQ" });
 };
 document.getElementById("btnGetPastMessages").onclick = function () {
     tcc.getPastMessages(document.getElementById('user1pm_to').value);

@@ -44,8 +44,8 @@ class TamedChatClient {
         this.chatClient.on("message", (payload) => {
             if (payload?.msg?.action == "AVCallMade") {
                 this.avData["callData"] = payload;
-                this.avData["from"] = payload.from;
-                incomingAVCallCallback(payload.from);
+                this.avData["from"] = this.avData["callData"].from;
+                incomingAVCallCallback(this.avData["callData"].from, this.avData["callData"].msg.callId);
             } else if (payload?.msg?.action == "AVAnswerMade") {
                 if (payload.msg.answer) {
                     this.avData["answerData"] = payload;
@@ -55,8 +55,9 @@ class TamedChatClient {
                         .catch(err => this.avData["icArr"].push(payload.msg.ic));
                 }
             } else if (payload?.msg?.action == "AVCallClosed") {
+                const callId = this.avData["callData"]?.msg.callId  ||  this.avData["answerData"].msg.callId;
                 this._reset();
-                hangupCallback();
+                hangupCallback( );
             } else {
                 textMessageCallback(payload);
             }
@@ -82,7 +83,7 @@ class TamedChatClient {
         if (this.chatClient.connected) {
             this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["answerData"].msg.answer))
                 .then(_ => Promise.all(this.avData["icArr"].map((x) => this.peerConnection.addIceCandidate(x))))
-                .then(_ => this.AVCallEstablishedCallback(this.avData["to"]))
+                .then(_ => this.AVCallEstablishedCallback(this.avData["to"], this.avData["answerData"].msg.callId))
                 .catch(this._errCatch);
         } else {
             this.errorCallback("Channel Closed!");
@@ -119,7 +120,7 @@ class TamedChatClient {
         return (this.avData["to"] || this.avData["from"]) ? true : false;
     }
 
-    makeAVCall = (to) => {
+    makeAVCall = (to, privacy) => {
         this.avData["to"] = to;
         if (this.chatClient.connected) {
             this.remoteStreamBinder(this.peerConnection);
@@ -131,7 +132,8 @@ class TamedChatClient {
                         action: "makeAVCall",
                         data: {
                             offer: this.peerConnection.localDescription,
-                            to: to
+                            to: to,
+                            privacy
                         }
                     });
                 })
@@ -141,7 +143,7 @@ class TamedChatClient {
         }
     }
 
-    acceptCall = () => {
+    acceptCall = (privacy) => {
         if (this.chatClient.connected) {
             this.remoteStreamBinder(this.peerConnection);
             this.localStreamBinder(this.peerConnection).then(() => this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["callData"].msg.offer)))
@@ -153,7 +155,8 @@ class TamedChatClient {
                         action: "makeAVAnswer",
                         data: {
                             answer: this.peerConnection.localDescription,
-                            to: this.avData["callData"].from
+                            to: this.avData["callData"].from,
+                            privacy: { ...privacy, callId: this.avData["callData"].msg.callId }
                         }
                     });
                     this.avData["from"] = this.avData["callData"].from;
@@ -175,21 +178,23 @@ class TamedChatClient {
         }
     }
 
-    sendMessage = (to, msg) => {
+    sendMessage = (to, msg, privacy) => {
         if (this.chatClient.connected) {
-            this.chatClient.send({ action: "newMessage", data: { to, msg } })
+            this.chatClient.send({ action: "newMessage", data: { to, msg, privacy } })
         } else {
             this.errorCallback("Channel Closed!");
         }
     }
 
-    hangup = () => {
+    hangup = (privacy) => {
         const who = this.avData["to"] || this.avData["from"];
         if (who) {
+            const callId = this.avData["callData"]?.msg.callId  ||  this.avData["answerData"].msg.callId;
             this.chatClient.send({
                 action: "hangupAVCall",
                 data: {
-                    to: who
+                    to: who,
+                    privacy: { ...privacy, callId }
                 }
             });
         }
