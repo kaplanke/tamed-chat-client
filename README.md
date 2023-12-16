@@ -4,7 +4,7 @@ CHECK TEST FOLDER FOR SAMPLE EXECUTION
 
 ## Change Log
 
-### 0.0.15
+### 0.0.15 and 0.0.16
 - Hangup CallId Fix
 
 ### 0.0.14

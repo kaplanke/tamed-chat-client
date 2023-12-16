@@ -122,6 +122,7 @@ class TamedChatClient {
 
     makeAVCall = (to, privacy) => {
         this.avData["to"] = to;
+        this.avData["callId"] = privacy.callId;
         if (this.chatClient.connected) {
             this.remoteStreamBinder(this.peerConnection);
             this.localStreamBinder(this.peerConnection)
@@ -189,7 +190,7 @@ class TamedChatClient {
     hangup = (privacy) => {
         const who = this.avData["to"] || this.avData["from"];
         if (who) {
-            const callId = this.avData["callData"]?.msg.callId || this.avData["answerData"]?.msg.callId;
+            const callId = this.avData["callId"] || this.avData["callData"]?.msg.callId;
             if (callId) {
                 this.chatClient.send({
                     action: "hangupAVCall",
