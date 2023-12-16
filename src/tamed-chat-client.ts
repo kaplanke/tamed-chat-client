@@ -55,9 +55,9 @@ class TamedChatClient {
                         .catch(err => this.avData["icArr"].push(payload.msg.ic));
                 }
             } else if (payload?.msg?.action == "AVCallClosed") {
-                const callId = this.avData["callData"]?.msg.callId  ||  this.avData["answerData"].msg.callId;
+                const callId = this.avData["callData"]?.msg.callId || this.avData["answerData"]?.msg.callId;
                 this._reset();
-                hangupCallback( );
+                hangupCallback(callId);
             } else {
                 textMessageCallback(payload);
             }
@@ -189,14 +189,16 @@ class TamedChatClient {
     hangup = (privacy) => {
         const who = this.avData["to"] || this.avData["from"];
         if (who) {
-            const callId = this.avData["callData"]?.msg.callId  ||  this.avData["answerData"].msg.callId;
-            this.chatClient.send({
-                action: "hangupAVCall",
-                data: {
-                    to: who,
-                    privacy: { ...privacy, callId }
-                }
-            });
+            const callId = this.avData["callData"]?.msg.callId || this.avData["answerData"]?.msg.callId;
+            if (callId) {
+                this.chatClient.send({
+                    action: "hangupAVCall",
+                    data: {
+                        to: who,
+                        privacy: { ...privacy, callId }
+                    }
+                });
+            }
         }
         this._reset();
     }
