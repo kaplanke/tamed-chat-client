@@ -45,7 +45,7 @@ class TamedChatClient {
             if (payload?.msg?.action == "AVCallMade") {
                 this.avData["callData"] = payload;
                 this.avData["from"] = this.avData["callData"].from;
-                incomingAVCallCallback(this.avData["callData"].from, this.avData["callData"].msg.callId);
+                incomingAVCallCallback(this.avData["callData"].from, this.avData["callData"].msg.callId, this.avData["callData"].msg.privacy);
             } else if (payload?.msg?.action == "AVAnswerMade") {
                 if (payload.msg.answer) {
                     this.avData["answerData"] = payload;
@@ -83,7 +83,7 @@ class TamedChatClient {
         if (this.chatClient.connected) {
             this.peerConnection.setRemoteDescription(this.rtcProvider("RTCSessionDescription", this.avData["answerData"].msg.answer))
                 .then(_ => Promise.all(this.avData["icArr"].map((x) => this.peerConnection.addIceCandidate(x))))
-                .then(_ => this.AVCallEstablishedCallback(this.avData["to"], this.avData["answerData"].msg.callId))
+                .then(_ => this.AVCallEstablishedCallback(this.avData["to"], this.avData["answerData"].msg.callId, this.avData["answerData"].msg.privacy))
                 .catch(this._errCatch);
         } else {
             this.errorCallback("Channel Closed!");
