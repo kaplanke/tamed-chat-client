@@ -1,11 +1,11 @@
 {
   "name": "tamed-chat-client",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "Tamed Chat Client",
-  "main": "tamed-chat-client.js",
+  "main": "src/tamed-chat-client.js",
   "author": "Kaplan",
   "license": "MIT",
-  "types": "tamed-chat-client.d.ts",
+  "types": "src/tamed-chat-client.d.ts",
   
   "scripts": {
     "compile": "tsc"

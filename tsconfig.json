@@ -9,7 +9,8 @@
     "strict": true, /* Enable all strict type-checking options. */
     "declaration": true,
     "noImplicitAny": false,
-    "types": []
+    "types": [],
+    "resolveJsonModule": true
   },
   "include": [
     "src/**/*",

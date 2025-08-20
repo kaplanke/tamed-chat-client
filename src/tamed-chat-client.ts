@@ -14,6 +14,8 @@ class TamedChatClient {
     remoteStreamBinder: Function;
     cleanUp: Function;
 
+    tamedPushCallback: Function;
+
     constructor(
         socketURL: string,
         socketConnectCallBack: Function,
@@ -27,6 +29,7 @@ class TamedChatClient {
         localStreamBinder: Function,
         remoteStreamBinder: Function,
         cleanUp: Function,
+        tamedPushCallback?: Function // <-- add as optional argument
     ) {
 
         this.chatClient = io(socketURL);
@@ -58,7 +61,10 @@ class TamedChatClient {
                 const callId = this.avData["callData"]?.msg.callId || this.avData["answerData"]?.msg.callId;
                 this._reset();
                 hangupCallback(callId);
-            } else {
+            } else if (payload?.msg?.action == "tamedPush") {
+                this.tamedPushCallback(payload.msg.data);
+            }
+            else {
                 textMessageCallback(payload);
             }
         });
@@ -71,6 +77,8 @@ class TamedChatClient {
         this.localStreamBinder = localStreamBinder;
         this.remoteStreamBinder = remoteStreamBinder;
         this.cleanUp = cleanUp;
+
+        this.tamedPushCallback = tamedPushCallback || (() => {});
 
         this._reset();
     }
@@ -255,7 +263,14 @@ const WEB_LOCAL_STREAM_BINDER = (peerConnection) => {
                 });
         } else {
             try {
-                (navigator as any).getUserMedia({ video: true, audio: true }, (stream) => {
+                const n: any = navigator;
+                n.getUserMedia = (
+                    n.getUserMedia ||
+                    n.webkitGetUserMedia ||
+                    n.mozGetUserMedia ||
+                    n.msGetUserMedia
+                );
+                n.getUserMedia({ video: true, audio: true }, (stream) => {
                     stream.getTracks().forEach((track) => {
                         peerConnection.addTrack(track, stream);
                     });
