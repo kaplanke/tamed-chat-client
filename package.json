@@ -1,6 +1,6 @@
 {
   "name": "tamed-chat-client",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "Tamed Chat Client",
   "main": "src/tamed-chat-client.js",
   "author": "Kaplan",
